@@ -108,27 +108,13 @@ int interrupt_flag = 1;
 mavlink_status_t status;
 mavlink_message_t msg;
 quaternion received_quat = QUATERNION_INITIALIZE;
-quaternionProducts quat_products;
+quaternionProducts buffer;
 mavlink_set_attitude_target_t command;
 // 串口接收回调，详细见serial.h第62行
 // 参数 uint16_t c是串口接收到的数据，其实应该是8bit就够了，不知道为什么用16位的，而且后面也变成8位的
 //      void* data是一个不关心的参数（按经验应该是数据的大小），所以后面用UNUSED修饰
 static void mavlinkReceive(uint16_t c, void* data) {
     UNUSED(data);
-    // mavlink_message_t msg;
-    // mavlink_status_t status;
-    
-    // =========================================================================
-    // =========================================================================
-    // if(interrupt_flag == 0){
-    //     interrupt_flag = 1000;
-    // }
-    // else {
-    //     interrupt_flag = 0;
-    // }
-    // received_data = c;
-    // =========================================================================
-    // =========================================================================
 
     // &status用于获取是三种状态的哪一种，只有是接收完成，即status为1时才会执行后续操作
     if (mavlink_parse_char(MAVLINK_COMM_0, (uint8_t)c, &msg, &status)) {
@@ -139,8 +125,7 @@ static void mavlinkReceive(uint16_t c, void* data) {
                 mavlink_msg_set_attitude_target_decode(&msg,&command);
                 // 这里的mask仅仅作为标记，而Mavlink不会置零被mask忽略的字段
                 // 只有在自带autopilot的飞控比如PX4中，飞控固件在后续的控制中会忽略相应数据
-                if(command.type_mask == 7) { 
-                    // type_mask == 7时忽略了角加速度
+                if(command.type_mask == 7) {  // 发送的姿态角是四元数
                     offboard.data_type = ANGLE_COMMAND;
 
                     received_quat.w = command.q[0];
@@ -148,13 +133,20 @@ static void mavlinkReceive(uint16_t c, void* data) {
                     received_quat.y = command.q[2];
                     received_quat.z = command.q[3];
                     
-                    // imuQuaternionComputeProducts(&received_quat, &quat_products);
-                    // 根据四元数计算
+                    imuQuaternionComputeProducts(&received_quat, &buffer);
+                    offboard.angle[FD_ROLL] = lrintf(atan2_approx((+2.0f * (buffer.wx + buffer.yz)), (+1.0f - 2.0f * (buffer.xx + buffer.yy))) * (1800.0f / M_PIf));
+                    offboard.angle[FD_PITCH] = lrintf(((0.5f * M_PIf) - acos_approx(+2.0f * (buffer.wy - buffer.xz))) * (1800.0f / M_PIf));
+                    offboard.angle[FD_YAW] = lrintf((-atan2_approx((+2.0f * (buffer.wz + buffer.xy)), (+1.0f - 2.0f * (buffer.yy + buffer.zz))) * (1800.0f / M_PIf)));
+
+                }
+                else if (command.type_mask == 4) { // 角速度存储的是角度
+                    offboard.data_type = ANGLE_COMMAND;
                     offboard.angle[FD_ROLL] = command.body_roll_rate;
                     offboard.angle[FD_PITCH] = command.body_pitch_rate;
                     offboard.angle[FD_YAW] = command.body_yaw_rate;
+
                 }
-                else {
+                else if (command.type_mask == 1) {  // 使用角速度控制
                     offboard.data_type = ANGLE_RATE_COMMAND;
                     offboard.angle_rate[FD_ROLL] = command.body_roll_rate; // 单位是度每秒（与原结构体定义不符，但是由于消息是我机载电脑你自定义发的，所以怎么方便怎么来）
                     offboard.angle_rate[FD_PITCH] = command.body_pitch_rate;
