@@ -448,17 +448,17 @@ STATIC_UNIT_TESTED FAST_CODE_NOINLINE float pidLevel(int axis, const pidProfile_
     // getLevelModeRcDeflection(axis)的作用：最大角度乘以遥控器的输入值（被标准化为-1到+1），得到期望角度值
     float angle = levelAngleLimit * getLevelModeRcDeflection(axis);
     if (FLIGHT_MODE(OFFBOARD_MODE)){
+        // currentPidSetpoint = 0;  // 此时disable掉遥控器输入，防止遥控器控制运动的同时，机载电脑由于定点的要求而反方向控制
         switch (offboard.data_type) {
             case ANGLE_COMMAND:
                 // 单位：度
-                angle = angle + offboard.angle[axis];
+                angle += offboard.angle[axis];
                 break;
             case ANGLE_RATE_COMMAND:
                 // 单位：度每秒
-                currentPidSetpoint = currentPidSetpoint + offboard.angle_rate[axis];
+                currentPidSetpoint += offboard.angle_rate[axis];
                 break;
         }
-
     }
     
 #ifdef USE_GPS_RESCUE

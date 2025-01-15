@@ -64,6 +64,8 @@
 
 #include "mixer.h"
 
+#include "offboard/offboard.h"
+
 #define DYN_LPF_THROTTLE_STEPS           100
 #define DYN_LPF_THROTTLE_UPDATE_DELAY_US 5000 // minimum of 5ms between updates
 
@@ -617,6 +619,9 @@ FAST_CODE_NOINLINE void mixTable(timeUs_t currentTimeUs)
         throttle = gpsRescueGetThrottle();
     }
 #endif
+    if (FLIGHT_MODE(OFFBOARD_MODE)) {
+        throttle = Get_offboard_thrust();
+    }
 
     motorMixRange = motorMixMax - motorMixMin;
     if (mixerConfig()->mixer_type > MIXER_LEGACY) {

@@ -137,20 +137,21 @@ static void mavlinkReceive(uint16_t c, void* data) {
                     offboard.angle[FD_ROLL] = lrintf(atan2_approx((+2.0f * (buffer.wx + buffer.yz)), (+1.0f - 2.0f * (buffer.xx + buffer.yy))) * (1800.0f / M_PIf));
                     offboard.angle[FD_PITCH] = lrintf(((0.5f * M_PIf) - acos_approx(+2.0f * (buffer.wy - buffer.xz))) * (1800.0f / M_PIf));
                     offboard.angle[FD_YAW] = lrintf((-atan2_approx((+2.0f * (buffer.wz + buffer.xy)), (+1.0f - 2.0f * (buffer.yy + buffer.zz))) * (1800.0f / M_PIf)));
-
+                    offboard.thrust = command.thrust;
                 }
                 else if (command.type_mask == 4) { // 角速度存储的是角度
                     offboard.data_type = ANGLE_COMMAND;
                     offboard.angle[FD_ROLL] = command.body_roll_rate;
-                    offboard.angle[FD_PITCH] = command.body_pitch_rate;
-                    offboard.angle[FD_YAW] = command.body_yaw_rate;
-
+                    offboard.angle[FD_PITCH] = -command.body_pitch_rate;
+                    offboard.angle[FD_YAW] = -command.body_yaw_rate;
+                    offboard.thrust = command.thrust;
                 }
                 else if (command.type_mask == 1) {  // 使用角速度控制
                     offboard.data_type = ANGLE_RATE_COMMAND;
                     offboard.angle_rate[FD_ROLL] = command.body_roll_rate; // 单位是度每秒（与原结构体定义不符，但是由于消息是我机载电脑你自定义发的，所以怎么方便怎么来）
-                    offboard.angle_rate[FD_PITCH] = command.body_pitch_rate;
-                    offboard.angle_rate[FD_YAW] = command.body_yaw_rate;
+                    offboard.angle_rate[FD_PITCH] = -command.body_pitch_rate;
+                    offboard.angle_rate[FD_YAW] = -command.body_yaw_rate;
+                    offboard.thrust = command.thrust;
                 }
                 break;
             }
@@ -484,14 +485,11 @@ void mavlinkSendAttitude(void)
         // yaw Yaw angle (rad)
         DECIDEGREES_TO_RADIANS(attitude.values.yaw),
         //rollspeed Roll angular speed (rad/s)
-        //DEGREES_TO_RADIANS(gyro.gyroADCf[FD_ROLL]),
-        received_quat.x,
+        DEGREES_TO_RADIANS(gyro.gyroADCf[FD_ROLL]),
         // pitchspeed Pitch angular speed (rad/s)
-        //DEGREES_TO_RADIANS(gyro.gyroADCf[FD_PITCH]),
-        received_quat.y,
+        DEGREES_TO_RADIANS(gyro.gyroADCf[FD_PITCH]),
         // yawspeed Yaw angular speed (rad/s)
-        //DEGREES_TO_RADIANS(gyro.gyroADCf[FD_YAW]));
-        received_quat.w);
+        DEGREES_TO_RADIANS(gyro.gyroADCf[FD_YAW]));
     msgLength = mavlink_msg_to_send_buffer(mavBuffer, &mavMsg);
     mavlinkSerialWrite(mavBuffer, msgLength);
 }
@@ -503,12 +501,12 @@ void mavlinkSendImuRawData(void)
     if (FLIGHT_MODE(OFFBOARD_MODE) && offboard.data_type == ANGLE_COMMAND){
         mag_x = offboard.angle[FD_ROLL]; 
         mag_y = offboard.angle[FD_PITCH];                     
-        mag_z = offboard.angle[FD_YAW];
+        mag_z = offboard.thrust*100;
     }
     else if (FLIGHT_MODE(OFFBOARD_MODE) && offboard.data_type == ANGLE_RATE_COMMAND) {
         mag_x = offboard.angle_rate[FD_ROLL]; 
         mag_y = offboard.angle_rate[FD_PITCH];                      
-        mag_z = offboard.angle_rate[FD_YAW]; 
+        mag_z = offboard.thrust*100; 
     }
     else {
         mag_x = 0; 

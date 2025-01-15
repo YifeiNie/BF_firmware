@@ -10,6 +10,8 @@ typedef struct offboard {
     uint8_t data_type;
     float angle[3];   // 单位是度（°）
     float angle_rate[3];  // 单位是度每秒*（°/s）
+    float thrust;
 }offboard_t;
 
 extern offboard_t offboard;
+float Get_offboard_thrust(void);
