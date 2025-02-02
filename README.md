@@ -36,14 +36,13 @@
 - Win的命令行下使用`where make`查找当前使用`make`命令调用的make.exe的路径配置Win下的STM32编译环境
 - 配置Win环境下的STM32编译工具，先下载工具链[rm-none-eabi-gcc](https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads)(具体是下载arm-gnu-toolchain-13.3.rel1-mingw-w64-i686-arm-none-eabi.zip
 即可),解压后将bin文件夹的路径添加到环境变量。然后下载[MinGW](https://zenlayer.dl.sourceforge.net/project/mingw/Installer/mingw-get-setup.exe?viasf=1)，安装包的时候安装第2，5，7（即最后一个）个包，并添加bin路径的环境变量，最后将`mingw32-make.exe`改为`make.exe`，一定要等一会，或者重启，之后使用`-v`命令检测前面的工具链和后面的MinGW是否安装完毕。整个流程参考[这里](https://www.cnblogs.com/bangbangzoutianya/p/17402641.html)
-- 千辛万苦，终于在Win下过编，明天上电！
 - 新版的MinGW好像支持一些linux的命令，移植过来时不用在makefile里修改替代了（比如linux的`rm`和win的`del`）
 ### 2024.10.10 by Nyf
 - BF_NeSC成功在我的405飞控上运行并成功读到MAVLink数据，前提是需要通过BF地面站的CLI命令行修改一下端口，具体操作见我10.07日的笔记
 ### 2024.10.11 by Nyf
-- 由于使用PX4.launch启动mavROS，所以PX4飞控上的固件ArduPilot中回传的GPS数据包需要一个地图数据集才能被OPi解析（其实英国不用管那个报错也可以，而且有人说这里的“error”其实是警告，不影响mavROS的运行，[参见](https://github.com/mavlink/mavros/issues/246)）具体解决：运行`sudo geographiclib-get-magnetic emm2015`命令下载，然后在路径`/opt/ros/jazzy/lib/mavros`下运行shell脚本：`sudo bash install_geographiclib_datasets.sh`。注意，这个的安装非常慢且终端一直卡在一个语句上，直到对应的三个数据集都被成功安装才可以使用，在我的OPi上花费了大约十来分钟
+- 由于使用PX4.launch启动mavROS，所以PX4飞控上的固件ArduPilot中回传的GPS数据包需要一个地图数据集才能被OPi解析（其实英国不用管那个报错也可以，而且有人说这里的“error”其实是警告，不影响mavROS的运行，[参见](https://github.com/mavlink/mavros/issues/246)）具体解决：运行`sudo geographiclib-get-magnetic emm2015`命令下载，然后在路径`/opt/ros/jazzy/lib/mavros`下运行shell脚本：`sudo bash install_geographiclib_datasets.sh`。注意，这个的安装非常慢且终端一直卡在一个语句上，直到对应的三个数据集都被成功安装才可以使用，在OPi上花费了大约十来分钟
 - 成功在Opi上运行mavROS，但不知道是什么原因飞控和Pi一直连不上，前者一直在发数据，后者的ROS结点也都开启了，有可能是波特率不对，白天在调一调
-- 飞控与OPi成功连接！以下是步骤
+- 飞控与OPi成功连接，以下是步骤
     - OPi上下载CuteCom作为串口调试助手`sudo apt install cutecom`
     - 飞控bf地面站左边栏目 “端口-遥测输出-选择mavlink，波特率115200”，“接收机-遥测”输出打开
     - 使用CH340连接飞控与OPi，切记只连接tx，rx，g，不要连接5v，飞控上电，发现ch340上RXD字样边红灯长亮，说明有数据在发送，说明飞控配置完毕
@@ -120,7 +119,7 @@
 - 飞控或者mavros源码中找不到的头文件或者声名，大概率出现在`opt/ros/noetic/include`里
 - 关于两个话题mavros/imu/data和mavros/imu/data_raw的合并问题，对于ROS2，这个bug已经在最新的2.9.0版本改了（其中开头的'2'表示适配ROS2的版本），但是对ROS1最新的1.20.0版本还是没改，我去反映一下
 ### 2024.11.08 -by Nyf
-- 按照前几次笔记的方法，成功适配ROS2 noble，说明还真不是bug的问题，但是这仍然是一个好消息
+- 按照前几次笔记的方法，成功适配ROS2 jazzy，说明还真不是bug的问题，但是这仍然是一个好消息
 - 这两天在调雷达时由于新买的nuc的cpu版本太新，进入设置-关于，里面的显卡显示为llvmpipe (LLVM 12.0.0, 256 bits)，也即纯软件渲染无显卡，说明核显不在工作，这也导致跑FAST-LIO2并运行Rviz实时查看点云时及其卡顿。
 - 经检查发现是内核版本过低，而如果要升级内核，ubuntu20.04又不再支持了，故以后又全部转为ubuntu24.04和ROS2 jazzy，且不再改变了，人不能总是留在过去，必须向前看。
 ### 2024.11.13
@@ -129,7 +128,7 @@
 ### 2024.11.14 --by nyf
 - 使用ROS2 jazzy成功在mavros端订阅到/mavros/imu/data_raw。初次订阅时报错`xxxxxx .... offering incompatible QoS`，这是因为在mavros的传感器类别数据中的Imu类别里，其发布的服务质量（Qos）是BEST_EFFORT，但在使用crate_subscirption函数创建订阅者时，默认的订阅质量是RELIABLE，故需要在该函数的第二个参数使用`rclcpp::QoS(10).best_effort()`作为参数传递，问题解决，成功进入回调
 - 如果要给betaflight添加新的c文件，则需要在make/source.mk里添加新的c文件的相对路径，这样再make才会通过，否则虽然编译会通过，但当新的c文件与源码的c文件有交互时会出现链接错误，出现一些类似变量未定义之类的错误
-### 2024.11.17 --by nyf 整了两天ubuntu24.04以及ROS2对香橙派的适配
+### 2024.11.17 --by nyf ubuntu24.04以及ROS2对香橙派的适配
 - 为便于测试offboard模式，选择先实现用键盘控制无人机的运动，对此选用香橙派
 - 编程和浏览网页时发现有些卡顿，经检查，发现香橙派的GPU没有启动，处于纯软件渲染模式，这个问题之前一直没注意到，直到最近卡顿加剧
 - 尝试如opencl，vulkan，panfork各种硬件加速库，失败，还是老样子，典中典llvmpipe
@@ -147,11 +146,11 @@
 - 使用px4官方的offboard示例`ros2 topic pub /mavros/setpoint_position/local geometry_msgs/PoseStamped "{header: {stamp: now, frame_id: 'map'}, pose: {position: {x: 0.0, y: 0.0, z: 10.0}, orientation: {w: 1.0}}}"`可以发送offboard信息，使用上一步的方法测试发现mavlink消息存在，而我自己编的程不存在
 - 发现发布的话题必须是mavros开头的话题，我自己之前的话题名是自己起的，所以就没有对应的mavlink消息，修改为/mavros/setpoint_raw/attitude后就能在mavlink消息里看到了
 - 好消息：进中断了；坏消息：没读到数据。初步怀疑是参数`MAVLINK_COMM_0`，等白天在确认一下
-### 2024.11.19 -- by nyf 买了个新飞控后，问题解决了
+### 2024.11.19 -- by nyf 问题解决
 - 折腾一天，无果，但发现是校验不通过导致没读到数据，不知道是什么原因
 - 想尝试调试一下，发现bf固件是通过串口烧录固件的，无法断点调试，而目前我手上的两种飞控均未引出swd接口，飞线也飞不上去，故买了个引出swd接口的新飞控，计划使用vscode+openocd进行断点调试
 - 问题解决了：发现在mavros的launch文件里把`"fcu_protocol"`改为v1.0即可，原来是mavlink的版本问题？明天仔细研究一下
-### 2024.11.20 -- by nyf 祝我生日快乐
+### 2024.11.20 -- by nyf 
 - 成功使用vscode + cmake + gdb实现c++的调试
 - 成功捕获到键盘数据，没有使用ros2，直接使用libevdev库，实现了同时捕获键盘wasd和前后左右方向键的单击，按住和松开三个状态
 ### 2024.12.18
@@ -163,7 +162,7 @@
   - `undefined symbol: _ZN2cv3MatC1EiiiRKNS_7Scalar_IdEE`，主要问题是egoplanner工作空间下的realsense-ros/realsense2_camera文件夹里的cmakelists没有调用opencv，解决办法[这里github](https://github.com/IntelRealSense/realsense-ros/issues/2326)和[这里csdn](https://blog.csdn.net/weixin_50578602/article/details/127648597)
   - 解决完上述问题后重新编译运行，报错，`cv::Exception`或`OutOfMemoryError`如[这里](https://github.com/HKUST-Aerial-Robotics/VINS-Fusion/issues/221)，这就是因为opencv到ros的接口cv-bridge中opencv版本不一致的问题，对此直接删除ros自动安装的cvbridge:`sudo apt remove ros-noetic-cv-bridge`，然后在[网站](https://github.com/ros-perception/vision_opencv/tree/noetic)下载cv-bridge通过源码安装，在安装之前修改修改文件夹cv_bridge中的cmakelists.txt中的`find_package(OpenCV 3.4.10 REQUIRED)`，其中的数字是电脑自带opencv的版本（注意不是安装ros时自动安装的版本），然后`cmake.. && make`并`sudo make install`，最后在egoplanner中所有调用cv-bridge的cmakelists的find_package前添加`set(cv_bridge_DIR /usr/local/share/cv_bridge/cmake)`，最后重新编译，问题解决，参考[这里](https://zhuanlan.zhihu.com/p/392939687)
 
-### 2025.1.2 - 新年快乐，使用ST-Link调试Kakute H7 mini
+### 2025.1.2 - 使用ST-Link调试Kakute H7 mini
 - 使用ubuntu+vscode+vscode中cortex debug插件+gcc-arm-none-eabi+STLink对KakuteH7 mini V1.3飞控进行调试，部分参考[这里](https://blog.csdn.net/qq_39765790/article/details/133470373)
   - KakuteH7 mini V1.3上有swd和clk的圆形焊盘，但是由于出厂封胶给盖住了丝印，需要查看[这个图上的丝印](https://holybro.com/products/kakute-h7-mini?srsltid=AfmBOopQRw1KIN5Lnj4rQ2e0Kef_wdhfmZTv2MfyrsoiOgx2q2P49brE)确定哪个是对应的焊盘
   - 安装vscode上的cortex debug插件
@@ -174,5 +173,7 @@
   - 使用[源码](https://github.com/openocd-org/openocd/tree/master)安装openocd 0.12.0，因为ubuntu20.04使用apt安装的版本为0.10.0，不支持STM32H7系列，下载解压后`sudo ./bootstrap`，`sudo ./configure --enable-jlink --enable-cmsis-dap --enable-stlink --enable-bitbang`，然后make并install即可，安装之后目录在`/usr/local/bin/openocd`
   - 使用vscode的调试功能，调试的launch.json文件就在本项目的.vscode里
   - 正式调试前需要修改makefile，其中的DEBUG类型要改为`DEBUG ?= INFO`，然后重新编译下载就额可以使用scode断点调试了
-### 2025.1.3 - 新年快乐，使用ST-Link调试Kakute H7 mini
+### 2025.1.3 - 使用ST-Link调试Kakute H7 mini
 - 解决了电脑给飞控发四元数错误的问题，原来是mavros里会给接收到的来自电脑的话题`mavros/setpoint_raw/attitude`下的四元数进行一些坐标变换再转成mavlink发给飞控（详见mavros 1.20.0版本`setpoint_attitude.cpp`文件的`send_attitude_quaternion`函数），对此在发送端进行一个逆变换抵消mavros的变换即可解决，具体查看本人仓库中keyboard_mav_ctr_ros1项目。现在对于控制飞机，既可以给飞控发送角速率，也可以给飞控发送欧拉角或者四元数
+### 2025.2.1
+- 删除一些与开发过程无关的内容以避免同学嘲笑

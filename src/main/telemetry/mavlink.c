@@ -92,7 +92,7 @@
 
 #define TELEMETRY_MAVLINK_INITIAL_PORT_MODE MODE_RXTX
 #define TELEMETRY_MAVLINK_MAXRATE 200
-#define TELEMETRY_MAVLINK_DELAY ((100 * 1000) / TELEMETRY_MAVLINK_MAXRATE)
+#define TELEMETRY_MAVLINK_DELAY ((1000 * 1000) / TELEMETRY_MAVLINK_MAXRATE)
 
 extern uint16_t rssi; // FIXME dependency on mw.c
 
@@ -168,7 +168,7 @@ static const uint16_t mavRates[] = {
     [MAV_DATA_STREAM_EXTENDED_STATUS] = 2, //2Hz
     [MAV_DATA_STREAM_RC_CHANNELS] = 5, //5Hz
     [MAV_DATA_STREAM_POSITION] = 2, //2Hz
-    [MAV_DATA_STREAM_EXTRA1] = 200, //自定义
+    [MAV_DATA_STREAM_EXTRA1] = 250, //自定义
     [MAV_DATA_STREAM_EXTRA2] = 10 //2Hz
 };
 
@@ -193,9 +193,9 @@ static int mavlinkStreamTrigger(enum MAV_DATA_STREAM streamNum)
     // mavlink的滴答计时器如果倒计时为0，则准备发送，首先进行一个速率限幅
     if (mavTicks[streamNum] == 0) {
         // we're triggering now, setup the next trigger point
-        // if (rate >= TELEMETRY_MAVLINK_MAXRATE) {
-        //     rate = TELEMETRY_MAVLINK_MAXRATE + 1;
-        // }
+        if (rate >= TELEMETRY_MAVLINK_MAXRATE) {
+            rate = TELEMETRY_MAVLINK_MAXRATE + 1;
+        }
         // 复位计时器从新开始计时，这里整数除法，所以如果TELEMETRY_MAVLINK_MAXRATE和rate恰好相等，得到1，会导致其实频率被除以2了
         mavTicks[streamNum] = (TELEMETRY_MAVLINK_MAXRATE / rate);
         return 1;
