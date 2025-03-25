@@ -975,6 +975,9 @@ void FAST_CODE pidController(const pidProfile_t *pidProfile, timeUs_t currentTim
     for (int axis = FD_ROLL; axis <= FD_YAW; ++axis) {
         // 获取的是遥控器的通道值，这个通道值代表设定的角速度
         float currentPidSetpoint = getSetpointRate(axis);
+        if (axis == FD_YAW) {
+            currentPidSetpoint += offboard.angle[FD_YAW];
+        }
         if (pidRuntime.maxVelocity[axis]) {
             // 限制遥控器通道值的变化速率
             currentPidSetpoint = accelerationLimit(axis, currentPidSetpoint);

@@ -139,7 +139,6 @@
 - 然后`echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] https://mirrors.tuna.tsinghua.edu.cn/ros2/ubuntu noble main" | sudo tee /etc/apt/sources.list.d/ros2.list > /dev/null`和`sudo apt update`导入thu的ros2源
 - 然后使用`sudo apt install ros-jazzy-desktop`安装桌面版ROS2 jazzy
 - 安装完成后在~/.bashrc里添加环境变量：`source opt/ros/jazzy/setup.bash`，终于完成安装，同时GPU应该也在工作
-- remark：不要随意使用什么一键安装！！
 ### 2024.11.18 -- by nyf
 - 尝试实现用键盘控制飞机，实现了键盘数据的读取和控制信号的发布，可以在mavros话题中找到我发送的那个控制姿态的offboard话题
 - 但是发现在从mavros转到mavlink的过程中遇到困难，经研究发现可以使用ROS2的话题`/uas1/mavlink_sink`（mavros到飞控）和`/uas1/mavlink_source`（飞控到mavros）来观测mavlink消息，还可以使用`grep | "msgid:82"`来抓取感兴趣的信息，这些消息id在[这里](https://mavlink.io/en/messages/common.html#SET_ATTITUDE_TARGET)查
@@ -160,7 +159,7 @@
 - orin nx的如果使用达妙的载板，会有一路串口无法使用，即THS1，而THS0是可以使用的，使用端子线连接时可以两个4pin接口都试一下看看哪个可以，肯定时有一个可以的，实在不行就用usb转ttl模块连typec
 - Egoplanner运行vins时有报错，大多数都是因为ros会自动安装一版opencv，机载电脑内部也会自带一版，两个版本的库冲突时opencv的ros接口cv-bridge会调用错误的库函数导致各种问题，以下是我遇到的与之相关的问题（我是用的是jetson orin nx 8G）
   - `undefined symbol: _ZN2cv3MatC1EiiiRKNS_7Scalar_IdEE`，主要问题是egoplanner工作空间下的realsense-ros/realsense2_camera文件夹里的cmakelists没有调用opencv，解决办法[这里github](https://github.com/IntelRealSense/realsense-ros/issues/2326)和[这里csdn](https://blog.csdn.net/weixin_50578602/article/details/127648597)
-  - 解决完上述问题后重新编译运行，报错，`cv::Exception`或`OutOfMemoryError`如[这里](https://github.com/HKUST-Aerial-Robotics/VINS-Fusion/issues/221)，这就是因为opencv到ros的接口cv-bridge中opencv版本不一致的问题，对此直接删除ros自动安装的cvbridge:`sudo apt remove ros-noetic-cv-bridge`，然后在[网站](https://github.com/ros-perception/vision_opencv/tree/noetic)下载cv-bridge通过源码安装，在安装之前修改修改文件夹cv_bridge中的cmakelists.txt中的`find_package(OpenCV 3.4.10 REQUIRED)`，其中的数字是电脑自带opencv的版本（注意不是安装ros时自动安装的版本），然后`cmake.. && make`并`sudo make install`，最后在egoplanner中所有调用cv-bridge的cmakelists的find_package前添加`set(cv_bridge_DIR /usr/local/share/cv_bridge/cmake)`，最后重新编译，问题解决，参考[这里](https://zhuanlan.zhihu.com/p/392939687)
+  - 解决完上述问题后重新编译运行，报错，`cv::Exception`或`OutOfMemoryError`如[这里](https://github.com/HKUST-Aerial-Robotics/VINS-Fusion/issues/221)，这就是因为opencv到ros的接口cv-bridge中opencv版本不一致的问题，但是无法修改因为安装ros时安装的是*库文件，没法按照需求重新编译，对此直接删除ros自动安装的cvbridge:`sudo apt remove ros-noetic-cv-bridge`，然后在[网站](https://github.com/ros-perception/vision_opencv/tree/noetic)下载cv-bridge通过源码安装，在安装之前修改修改文件夹cv_bridge中的cmakelists.txt中的`find_package(OpenCV 3.4.10 REQUIRED)`，其中的数字是电脑自带opencv的版本（注意不是安装ros时自动安装的版本），然后`cmake.. && make`并`sudo make install`，最后在egoplanner中所有调用cv-bridge的cmakelists的find_package前添加`set(cv_bridge_DIR /usr/local/share/cv_bridge/cmake)`，最后重新编译，问题解决，参考[这里](https://zhuanlan.zhihu.com/p/392939687)
 
 ### 2025.1.2 - 使用ST-Link调试Kakute H7 mini
 - 使用ubuntu+vscode+vscode中cortex debug插件+gcc-arm-none-eabi+STLink对KakuteH7 mini V1.3飞控进行调试，部分参考[这里](https://blog.csdn.net/qq_39765790/article/details/133470373)

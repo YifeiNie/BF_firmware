@@ -501,7 +501,7 @@ void mavlinkSendImuRawData(void)
     if (FLIGHT_MODE(OFFBOARD_MODE) && offboard.data_type == ANGLE_COMMAND){
         mag_x = offboard.angle[FD_ROLL]; 
         mag_y = offboard.angle[FD_PITCH];                     
-        mag_z = offboard.thrust*100;
+        mag_z = offboard.angle[FD_YAW];
     }
     else if (FLIGHT_MODE(OFFBOARD_MODE) && offboard.data_type == ANGLE_RATE_COMMAND) {
         mag_x = offboard.angle_rate[FD_ROLL]; 
