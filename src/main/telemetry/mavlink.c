@@ -91,7 +91,7 @@
 #pragma GCC diagnostic pop
 
 #define TELEMETRY_MAVLINK_INITIAL_PORT_MODE MODE_RXTX
-#define TELEMETRY_MAVLINK_MAXRATE 200
+#define TELEMETRY_MAVLINK_MAXRATE 210
 #define TELEMETRY_MAVLINK_DELAY ((1000 * 1000) / TELEMETRY_MAVLINK_MAXRATE)
 
 extern uint16_t rssi; // FIXME dependency on mw.c
@@ -110,6 +110,10 @@ mavlink_message_t msg;
 quaternion received_quat = QUATERNION_INITIALIZE;
 quaternionProducts buffer;
 mavlink_set_attitude_target_t command;
+
+float mag_x = 23;
+float mag_y;
+float mag_z;
 // 串口接收回调，详细见serial.h第62行
 // 参数 uint16_t c是串口接收到的数据，其实应该是8bit就够了，不知道为什么用16位的，而且后面也变成8位的
 //      void* data是一个不关心的参数（按经验应该是数据的大小），所以后面用UNUSED修饰
@@ -138,6 +142,7 @@ static void mavlinkReceive(uint16_t c, void* data) {
                     offboard.angle[FD_PITCH] = lrintf(((0.5f * M_PIf) - acos_approx(+2.0f * (buffer.wy - buffer.xz))) * (1800.0f / M_PIf));
                     offboard.angle[FD_YAW] = lrintf((-atan2_approx((+2.0f * (buffer.wz + buffer.xy)), (+1.0f - 2.0f * (buffer.yy + buffer.zz))) * (1800.0f / M_PIf)));
                     offboard.thrust = command.thrust;
+                    
                 }
                 else if (command.type_mask == 4) { // 角速度存储的是角度
                     offboard.data_type = ANGLE_COMMAND;
@@ -145,6 +150,7 @@ static void mavlinkReceive(uint16_t c, void* data) {
                     offboard.angle[FD_PITCH] = -command.body_pitch_rate;
                     offboard.angle[FD_YAW] = -command.body_yaw_rate;
                     offboard.thrust = command.thrust;
+                    mag_x = -mag_x;
                 }
                 else if (command.type_mask == 1) {  // 使用角速度控制
                     offboard.data_type = ANGLE_RATE_COMMAND;
@@ -168,7 +174,7 @@ static const uint16_t mavRates[] = {
     [MAV_DATA_STREAM_EXTENDED_STATUS] = 2, //2Hz
     [MAV_DATA_STREAM_RC_CHANNELS] = 5, //5Hz
     [MAV_DATA_STREAM_POSITION] = 2, //2Hz
-    [MAV_DATA_STREAM_EXTRA1] = 250, //自定义
+    [MAV_DATA_STREAM_EXTRA1] = 210, //自定义
     [MAV_DATA_STREAM_EXTRA2] = 10 //2Hz
 };
 
@@ -493,26 +499,24 @@ void mavlinkSendAttitude(void)
     msgLength = mavlink_msg_to_send_buffer(mavBuffer, &mavMsg);
     mavlinkSerialWrite(mavBuffer, msgLength);
 }
-float mag_x;
-float mag_y;
-float mag_z;
+
 void mavlinkSendImuRawData(void)
 {   
     if (FLIGHT_MODE(OFFBOARD_MODE) && offboard.data_type == ANGLE_COMMAND){
-        mag_x = offboard.angle[FD_ROLL]; 
+        // mag_x = offboard.angle[FD_ROLL]; 
         mag_y = offboard.angle[FD_PITCH];                     
-        mag_z = offboard.angle[FD_YAW];
+        mag_z = offboard.thrust*100;
     }
     else if (FLIGHT_MODE(OFFBOARD_MODE) && offboard.data_type == ANGLE_RATE_COMMAND) {
-        mag_x = offboard.angle_rate[FD_ROLL]; 
+        // mag_x = offboard.angle_rate[FD_ROLL]; 
         mag_y = offboard.angle_rate[FD_PITCH];                      
         mag_z = offboard.thrust*100; 
     }
-    else {
-        mag_x = 0; 
-        mag_y = 0;                      
-        mag_z = 0; 
-    }
+    // else {
+    //     mag_x = 0; 
+    //     mag_y = 0;                      
+    //     mag_z = 0; 
+    // }
     uint16_t msgLength;
     mavlink_msg_raw_imu_pack(0, 200, &mavMsg,
         // time_boot_ms Timestamp (milliseconds since system boot)
